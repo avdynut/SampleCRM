@@ -11,10 +11,10 @@
                 mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="480"
                 Style="{StaticResource PageStyle}">
     <local:BasePage.Resources>
-        <local:BoolToVisibilityConverter x:Key="boolToVisibilityConverter" />
+        <local:NullableToVisibilityConverter x:Key="NullableToVisibilityConverter" />
         <local:DateTimeFormatConverter x:Key="DateTimeFormatConverter" />
 
-        <riaControls:DomainDataSource x:Key="countryCodesDataSource" 
+        <riaControls:DomainDataSource Name="countryCodesDataSource" x:Key="countryCodesDataSource"
                                                   QueryName="GetCountries" AutoLoad="True">
             <riaControls:DomainDataSource.DomainContext>
                 <domain:CountryCodesContext />
@@ -100,7 +100,7 @@
                 <DataField Grid.Row="3" Grid.Column="3" LabelVisibility="Collapsed">
                     <StackPanel Orientation="Vertical">
                         <TextBlock Text="Country" Style="{StaticResource DataFieldLabelStyle}" />
-                        <ComboBox ItemsSource="{Binding CountryCodes}"
+                        <ComboBox ItemsSource="{Binding DomainContext.CountryCodes, Source={StaticResource countryCodesDataSource}}"
                                   SelectedValuePath="CountryCodeID"
                                   SelectedValue="{Binding CountryCode, Mode=TwoWay}"
                                   DisplayMemberPath="Name"
@@ -201,7 +201,7 @@
                 <DataField Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="4" LabelVisibility="Collapsed">
                     <StackPanel Orientation="Vertical">
                         <TextBlock Text="Country" Style="{StaticResource DataFieldLabelStyle}" />
-                        <ComboBox ItemsSource="{Binding CountryCodes}"                                                          
+                        <ComboBox ItemsSource="{Binding DomainContext.CountryCodes, Source={StaticResource countryCodesDataSource}}"
                                   SelectedValuePath="CountryCodeID"
                                   SelectedValue="{Binding CountryCode, Mode=TwoWay}"
                                   DisplayMemberPath="Name"
@@ -270,7 +270,6 @@
                     </Grid.ColumnDefinitions>
                     <TextBox Height="25" Grid.Column="0" Grid.ColumnSpan="4" x:Name="txtSearch" HorizontalAlignment="Stretch" 
                              KeyUp="txtSearch_KeyUp"
-                             Text="{Binding SearchText, Mode=TwoWay}" 
                              PlaceholderText="Search Name"
                              Style="{StaticResource MaterialDesign_TextBox_Style}" />
                     <Button x:Name="btnSearch" Grid.Column="1" Style="{StaticResource SearchButtonStyle}"
@@ -285,12 +284,12 @@
 
                 <riaControls:DomainDataSource Name="customersDataSource" 
                                                   QueryName="GetCustomers" LoadedData="customersDataSource_LoadedData"
-                                                  PageSize="5" LoadSize="5" AutoLoad="False">
+                                                  PageSize="5" LoadSize="5" AutoLoad="True">
                     <riaControls:DomainDataSource.DomainContext>
                         <domain:CustomersContext />
                     </riaControls:DomainDataSource.DomainContext>
                     <riaControls:DomainDataSource.QueryParameters>
-                        <riaControls:Parameter ParameterName="search" Value="" />
+                        <riaControls:Parameter x:Name="customersSearchParameter" ParameterName="search" Value="" />
                     </riaControls:DomainDataSource.QueryParameters>
                     <riaControls:DomainDataSource.SortDescriptors>
                         <riaControls:SortDescriptor PropertyPath="FirstName" Direction="Ascending" />
@@ -300,7 +299,7 @@
                           HorizontalContentAlignment="Stretch"
                           ItemsSource="{Binding Data, ElementName=customersDataSource}"
                           AlternatingRowBackground="Transparent" RowBackground="Transparent" 
-                          SelectionChanged="grdCustomers_SelectionChanged" 
+                          SelectionChanged="OnSelectedCustomerChanged" 
                           IsReadOnly="True"                          
                           AutoGenerateColumns="False" CanUserReorderColumns="True" CanUserSortColumns="True" CanUserResizeColumns="True" 
                           Style="{StaticResource MaterialDesign_DataGrid_Style}">
@@ -338,8 +337,8 @@
         </ContentControl>
 
         <TabControl x:Name="tcDetails" Grid.Row="1" 
-                            Visibility="{Binding AnySelectedCustomer, Converter={StaticResource boolToVisibilityConverter}}"
-                            SelectionChanged="tcDetails_SelectionChanged" Style="{StaticResource MaterialDesign_TabControl_Style}">
+                            Visibility="{Binding SelectedItem, ElementName=grdCustomers, Converter={StaticResource NullableToVisibilityConverter}}"
+                            SelectionChanged="OnSelectedCustomerChanged" Style="{StaticResource MaterialDesign_TabControl_Style}">
             <TabItem x:Name="tbCustomer" Header="Customer" Style="{StaticResource MaterialDesign_TabItem_Style}">
                 <ScrollViewer x:Name="scrTbCustomer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" BorderThickness="0">
                     <Grid x:Name="grdTbCustomer">
@@ -348,7 +347,7 @@
                             <ColumnDefinition Width="2*"/>
                         </Grid.ColumnDefinitions>
                         <Border x:Name="customerCard" Grid.Column="0" Background="{StaticResource CustomerCardBackground}" 
-                                DataContext="{Binding SelectedCustomer, Mode=OneWay}">
+                                DataContext="{Binding SelectedItem, ElementName=grdCustomers, Mode=OneWay}">
                             <StackPanel Margin="10">
                                 <Grid HorizontalAlignment="Stretch">
                                     <Grid HorizontalAlignment="Left" Margin="0" VerticalAlignment="Bottom">
@@ -399,7 +398,7 @@
                             <Border x:Name="customerDetails" Grid.Row="1">
                                 <DataForm x:Name="formCustomer" 
                                               Style="{StaticResource DefaultDataForm}"
-                                              CurrentItem="{Binding SelectedCustomer}"
+                                              CurrentItem="{Binding SelectedItem, ElementName=grdCustomers}"
                                               EditEnded="formCustomer_EditEnded"
                                               CommitButtonStyle="{StaticResource PrimaryButtonStyle}"
                                               CancelButtonStyle="{StaticResource SecondaryButtonStyle}"
@@ -459,15 +458,14 @@
                         <TextBox Height="25" Grid.Column="0" Grid.ColumnSpan="4" 
                                  x:Name="txtOrderSearch" HorizontalAlignment="Stretch" 
                                  KeyUp="txtOrderSearch_KeyUp"
-                                 Text="{Binding SearchOrderText, Mode=TwoWay}" 
                                  PlaceholderText="Search Order ID"
                                  Style="{StaticResource MaterialDesign_TextBox_Style}" />
                         <Button x:Name="btnOrderSearch" Grid.Column="1" Style="{StaticResource SearchButtonStyle}"
-                                   Content="" Tapped="btnSearch_Click"
+                                   Content="" Tapped="btnOrderSearch_Click"
                                    FontSize="12" FontFamily="{StaticResource FontAwesome}" 
                                    VerticalAlignment="Center" Opacity="0.75" Foreground="White" Cursor="Hand" />
                         <Button Grid.Column="2" Style="{StaticResource SearchButtonStyle}"
-                                   Content="" Tapped="btnSearchCancel_Click"
+                                   Content="" Tapped="btnOrderSearchCancel_Click"
                                    FontSize="12" FontFamily="{StaticResource FontAwesome}" 
                                    Margin="5,0,5,0" Opacity="0.25" Foreground="White" VerticalAlignment="Center" Cursor="Hand" />
                     </Grid>
@@ -479,8 +477,8 @@
                             <domain:OrderContext />
                         </riaControls:DomainDataSource.DomainContext>
                         <riaControls:DomainDataSource.QueryParameters>
-                            <riaControls:Parameter ParameterName="search" Value="" />
-                            <riaControls:Parameter ParameterName="customerId" Value="" />
+                            <riaControls:Parameter x:Name="ordersSearchParameter" ParameterName="search" Value="" />
+                            <riaControls:Parameter x:Name="ordersCustomerIdParameter" ParameterName="customerId" Value="" />
                         </riaControls:DomainDataSource.QueryParameters>
                         <riaControls:DomainDataSource.SortDescriptors>
                             <riaControls:SortDescriptor PropertyPath="OrderDateUTC" Direction="Descending" />
@@ -488,7 +486,6 @@
                     </riaControls:DomainDataSource>
                     <DataGrid x:Name="grdOrders" Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="3"
                               ItemsSource="{Binding Data, ElementName=ordersDataSource}"
-                              SelectionChanged="grdOrders_SelectionChanged"
                               HorizontalContentAlignment="Stretch"
                               IsReadOnly="True"
                               AutoGenerateColumns="False"

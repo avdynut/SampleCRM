@@ -12,128 +12,19 @@ namespace SampleCRM.Web.Views
 {
     public partial class Customers : BasePage
     {
-        #region Contexts
         private CustomersContext _customersContext => customersDataSource.DomainContext as CustomersContext;
         private OrderContext _orderContext => ordersDataSource.DomainContext as OrderContext;
+        private IEnumerable<Models.CountryCodes> CountryCodes => (countryCodesDataSource.DomainContext as CountryCodesContext).CountryCodes;
+        private Models.Customers SelectedCustomer => grdCustomers.SelectedItem as Models.Customers;
+        private Models.Orders SelectedOrder => grdOrders.SelectedItem as Models.Orders;
 
-        private CountryCodesContext _countryCodesContext = new CountryCodesContext();
-        private OrderStatusContext _orderStatusContext = new OrderStatusContext();
-        private ShippersContext _shippersContext = new ShippersContext();
-        private PaymentTypeContext _paymentTypesContext = new PaymentTypeContext();
-        #endregion
-
-        private bool _ordersTabSelected;
-
-        #region DataContext Properties
-        public IEnumerable<Models.CountryCodes> CountryCodes
-        {
-            get { return (IEnumerable<Models.CountryCodes>)GetValue(CountryCodesProperty); }
-            set { SetValue(CountryCodesProperty, value); }
-        }
-        public static readonly DependencyProperty CountryCodesProperty =
-            DependencyProperty.Register("CountryCodes", typeof(IEnumerable<Models.CountryCodes>), typeof(Customers), new PropertyMetadata(null));
-
-        public Models.Customers SelectedCustomer
-        {
-            get { return (Models.Customers)GetValue(SelectedCustomerProperty); }
-            set { SetValue(SelectedCustomerProperty, value); }
-        }
-        public static readonly DependencyProperty SelectedCustomerProperty =
-            DependencyProperty.Register("SelectedCustomer", typeof(Models.Customers), typeof(Customers),
-                new PropertyMetadata(
-                    new PropertyChangedCallback((s, t) =>
-                    {
-                        var value = t.NewValue as Models.Customers;
-                        var page = (Customers)s;
-
-                        page.AnySelectedCustomer = value != null;
-
-                        if (value != null)
-                        {
-                            if (page._ordersTabSelected)
-                            {
-                                var customerId = value.CustomerID;
-                                var customerParam = page.ordersDataSource.QueryParameters.FirstOrDefault(x => x.ParameterName == "customerId");
-                                customerParam.Value = customerId;
-                                page.ordersDataSource.Load();
-                            }
-#if DEBUG
-                            Console.WriteLine($"Customers, Customer: {value.FullName} selected");
-#endif
-                        }
-
-                    })));
-
-        public bool AnySelectedCustomer
-        {
-            get { return (bool)GetValue(AnySelectedCustomerProperty); }
-            set { SetValue(AnySelectedCustomerProperty, value); }
-        }
-        private static readonly DependencyProperty AnySelectedCustomerProperty =
-            DependencyProperty.Register("AnySelectedCustomer", typeof(bool), typeof(Customers),
-                new PropertyMetadata(false));
-
-        public string SearchText
-        {
-            get { return (string)GetValue(SearchTextProperty); }
-            set { SetValue(SearchTextProperty, value); }
-        }
-        public static readonly DependencyProperty SearchTextProperty =
-            DependencyProperty.Register("SearchText", typeof(string), typeof(Customers),
-                new PropertyMetadata(
-                    new PropertyChangedCallback((s, t) =>
-                    {
-                        var value = t.NewValue as string;
-                        var page = s as Customers;
-                        var searchParam = page.customersDataSource.QueryParameters.FirstOrDefault(x => x.ParameterName == "search");
-                        searchParam.Value = value;
-                        page.customersDataSource.Load();
-                    })));
-
-
-        public Models.Orders SelectedOrder
-        {
-            get { return (Models.Orders)GetValue(SelectedOrderProperty); }
-            set { SetValue(SelectedOrderProperty, value); }
-        }
-        public static readonly DependencyProperty SelectedOrderProperty =
-            DependencyProperty.Register("SelectedOrder", typeof(Models.Orders), typeof(Customers),
-                new PropertyMetadata(
-                    new PropertyChangedCallback((s, t) =>
-                    {
-                        var value = t.NewValue as Models.Orders;
-                        //var page = (Customers)s;
-                        if (value != null)
-                        {
-#if DEBUG
-                            Console.WriteLine($"Orders, Order: {value.OrderID} selected");
-#endif
-                        }
-                    })));
-
-        public string SearchOrderText
-        {
-            get { return (string)GetValue(SearchOrderTextProperty); }
-            set { SetValue(SearchOrderTextProperty, value); }
-        }
-        public static readonly DependencyProperty SearchOrderTextProperty =
-            DependencyProperty.Register("SearchOrderText", typeof(string), typeof(Customers),
-                new PropertyMetadata(
-                    new PropertyChangedCallback((s, t) =>
-                    {
-                        var value = t.NewValue as string;
-                        var page = s as Customers;
-                        var searchParam = page.ordersDataSource.QueryParameters.FirstOrDefault(x => x.ParameterName == "search");
-                        searchParam.Value = value;
-                        page.ordersDataSource.Load();
-                    })));
-
-        #endregion
+        private readonly OrderStatusContext _orderStatusContext = new OrderStatusContext();
+        private readonly ShippersContext _shippersContext = new ShippersContext();
+        private readonly PaymentTypeContext _paymentTypesContext = new PaymentTypeContext();
 
         public Customers()
         {
             InitializeComponent();
-            DataContext = this;
         }
 
         private void customersDataSource_LoadedData(object sender, OpenRiaServices.Controls.LoadedDataEventArgs e)
@@ -210,39 +101,40 @@ namespace SampleCRM.Web.Views
             }
         }
 
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
+        #region Search Customer
+        private void btnSearch_Click(object sender, RoutedEventArgs e)
         {
-            await AsyncHelper.RunAsync(LoadCountryCodes);
-            customersDataSource.Load();
+            SearchCustomer();
         }
-
-        private async Task LoadCountryCodes() => CountryCodes = (await _countryCodesContext.LoadAsync(_countryCodesContext.GetCountriesQuery())).Entities;
 
         private void btnSearchCancel_Click(object sender, RoutedEventArgs e)
         {
-            SearchText = string.Empty;
-        }
-        private void btnSearch_Click(object sender, RoutedEventArgs e)
-        {
-
+            txtSearch.Text = string.Empty;
+            SearchCustomer();
         }
 
-        private void grdCustomers_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void txtSearch_KeyUp(object sender, KeyEventArgs e)
         {
-            if (e.AddedItems.Count > 0 && e.AddedItems[0] is Models.Customers)
+            if (e.Key == Key.Enter)
             {
-                SelectedCustomer = e.AddedItems[0] as Models.Customers;
+                SearchCustomer();
             }
-            else
-            {
-                SelectedCustomer = null;
-            }
+        }
 
-#if DEBUG
-            Console.WriteLine("grdCustomers_SelectionChanged, {0} Items Added", e.AddedItems.Count);
-            if (e.AddedItems.Count > 0)
-                Console.WriteLine(e.AddedItems[0]);
-#endif
+        private void SearchCustomer()
+        {
+            customersSearchParameter.Value = txtSearch.Text;
+            customersDataSource.Load();
+        }
+        #endregion
+
+        private void OnSelectedCustomerChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (tbOrders?.IsSelected == true && SelectedCustomer != null)
+            {
+                ordersCustomerIdParameter.Value = SelectedCustomer.CustomerID;
+                ordersDataSource.Load();
+            }
         }
 
         private void formCustomer_EditEnded(object sender, DataFormEditEndedEventArgs e)
@@ -256,6 +148,7 @@ namespace SampleCRM.Web.Views
                 _customersContext.RejectChanges();
             }
         }
+
         private void OnFormCustomerSubmitCompleted(SubmitOperation so)
         {
             if (so.HasError)
@@ -278,37 +171,32 @@ namespace SampleCRM.Web.Views
             }
         }
 
+        #region Search Order
+        private void btnOrderSearch_Click(object sender, TappedRoutedEventArgs e)
+        {
+            SearchOrder();
+        }
+
         private void btnOrderSearchCancel_Click(object sender, RoutedEventArgs e)
         {
-            SearchOrderText = string.Empty;
+            txtOrderSearch.Text = string.Empty;
+            SearchOrder();
         }
 
-        private void tcDetails_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void txtOrderSearch_KeyUp(object sender, KeyEventArgs e)
         {
-            _ordersTabSelected = e.AddedItems.Count > 0 && e.AddedItems.Contains(tbOrders);
-            if (_ordersTabSelected && SelectedCustomer != null)
+            if (e.Key == Key.Enter)
             {
-                var customerId = SelectedCustomer.CustomerID;
-                var customerParam = ordersDataSource.QueryParameters.FirstOrDefault(x => x.ParameterName == "customerId");
-                customerParam.Value = customerId;
-                ordersDataSource.Load();
+                SearchOrder();
             }
         }
 
-        private void grdOrders_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void SearchOrder()
         {
-#if DEBUG
-            Console.WriteLine("grdOrders_SelectionChanged, {0} Items Added", e.AddedItems.Count);
-#endif
-            if (e.AddedItems.Count > 0 && e.AddedItems[0] is Models.Orders)
-            {
-                SelectedOrder = e.AddedItems[0] as Models.Orders;
-            }
-            else
-            {
-                SelectedOrder = null;
-            }
+            ordersSearchParameter.Value = txtOrderSearch.Text;
+            ordersDataSource.Load();
         }
+        #endregion
 
         private void btnDelete_Click(object sender, RoutedEventArgs e)
         {
@@ -326,6 +214,7 @@ namespace SampleCRM.Web.Views
                 throw new AccessViolationException("RIA Service Delete Entity for Customer Context is denied");
             }
         }
+
         private void OnDeleteSubmitCompleted(SubmitOperation so)
         {
             if (so.HasError)
@@ -376,10 +265,12 @@ namespace SampleCRM.Web.Views
 
             await OrderAddEditWindow.Show(SelectedOrder, _orderContext);
         }
+
         private async void btnNewOrder_Click(object sender, RoutedEventArgs e)
         {
             await AsyncHelper.RunAsync(ArrangeOrderAddEditWindow);
         }
+
         private async Task ArrangeOrderAddEditWindow()
         {
             if (SelectedCustomer == null)
@@ -400,21 +291,6 @@ namespace SampleCRM.Web.Views
             if (result)
             {
                 NavigationService.Refresh();
-            }
-        }
-
-        private void txtSearch_KeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-            {
-                btnSearch.Focus();
-            }
-        }
-        private void txtOrderSearch_KeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-            {
-                btnOrderSearch.Focus();
             }
         }
     }
