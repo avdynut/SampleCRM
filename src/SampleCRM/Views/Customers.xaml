@@ -5,6 +5,8 @@
                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+                xmlns:ei="http://schemas.microsoft.com/expression/2010/interactions"
                 xmlns:controls="clr-namespace:SampleCRM.Controls"
                 xmlns:domain="clr-namespace:SampleCRM.Web"
                 xmlns:riaControls="clr-namespace:OpenRiaServices.Controls;assembly=OpenRiaServices.Controls.DomainServices"
@@ -298,11 +300,17 @@
                 <DataGrid Grid.Row="3" Grid.ColumnSpan="3" Grid.Column="0" Margin="5" x:Name="grdCustomers"  
                           HorizontalContentAlignment="Stretch"
                           ItemsSource="{Binding Data, ElementName=customersDataSource}"
-                          AlternatingRowBackground="Transparent" RowBackground="Transparent" 
-                          SelectionChanged="OnSelectedCustomerChanged" 
+                          AlternatingRowBackground="Transparent" RowBackground="Transparent"
                           IsReadOnly="True"                          
                           AutoGenerateColumns="False" CanUserReorderColumns="True" CanUserSortColumns="True" CanUserResizeColumns="True" 
                           Style="{StaticResource MaterialDesign_DataGrid_Style}">
+                    <i:Interaction.Triggers>
+                        <i:EventTrigger EventName="SelectionChanged">
+                            <ei:ChangePropertyAction TargetObject="{Binding ElementName=ordersCustomerIdParameter}"
+                                                     PropertyName="Value" Value="{Binding SelectedItem.CustomerID, ElementName=grdCustomers}"/>
+                            <ei:CallMethodAction TargetObject="{Binding ElementName=ordersDataSource}" MethodName="Load"/>
+                        </i:EventTrigger>
+                    </i:Interaction.Triggers>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Id" Binding="{Binding CustomerID}" IsReadOnly="True" CellStyle="{StaticResource DataGridCell}" />
                         <DataGridTemplateColumn Header="Name" IsReadOnly="True" SortMemberPath="FirstName" CellStyle="{StaticResource DataGridCell}">
@@ -338,7 +346,7 @@
 
         <TabControl x:Name="tcDetails" Grid.Row="1" 
                             Visibility="{Binding SelectedItem, ElementName=grdCustomers, Converter={StaticResource NullableToVisibilityConverter}}"
-                            SelectionChanged="OnSelectedCustomerChanged" Style="{StaticResource MaterialDesign_TabControl_Style}">
+                            Style="{StaticResource MaterialDesign_TabControl_Style}">
             <TabItem x:Name="tbCustomer" Header="Customer" Style="{StaticResource MaterialDesign_TabItem_Style}">
                 <ScrollViewer x:Name="scrTbCustomer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" BorderThickness="0">
                     <Grid x:Name="grdTbCustomer">

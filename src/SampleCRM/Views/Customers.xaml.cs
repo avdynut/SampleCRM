@@ -128,15 +128,6 @@ namespace SampleCRM.Web.Views
         }
         #endregion
 
-        private void OnSelectedCustomerChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (tbOrders?.IsSelected == true && SelectedCustomer != null)
-            {
-                ordersCustomerIdParameter.Value = SelectedCustomer.CustomerID;
-                ordersDataSource.Load();
-            }
-        }
-
         private void formCustomer_EditEnded(object sender, DataFormEditEndedEventArgs e)
         {
             if (e.EditAction == DataFormEditAction.Commit)
